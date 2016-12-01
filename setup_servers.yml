@@ -1,0 +1,43 @@
+---
+- hosts: all
+  sudo: true
+
+  tasks:
+    - name: Installing nodeJs
+      apt: pkg=nodejs state=installed update_cache=true
+
+    - name: Installing npm
+      apt: pkg=npm state=installed update_cache=true
+
+    - name: Installing git
+      apt: pkg=git state=installed update_cache=true   
+
+    - name: Create the project directory.
+      file: state=directory path=/home/ubuntu/server mode=0777
+
+    - name: clone project repo in destination
+      git: repo=https://github.com/psjawale/redis.git dest=/home/ubuntu/server/ accept_hostkey=true
+
+    - name: Downloading redis tar folder
+      get_url: url=http://download.redis.io/releases/redis-3.2.5.tar.gz dest=/home/ubuntu/redis-3.2.5.tar.gz
+
+    - name: untar redis
+      command: tar xzf /home/ubuntu/redis-3.2.5.tar.gz
+
+    - name: build redis
+      command: make -C /home/ubuntu/redis-3.2.5
+
+    - name: start redis 
+      command: /home/ubuntu/redis-3.2.5/src/redis-server --daemonize yes
+
+    - name: change configuration
+      command: /home/ubuntu/redis-3.2.5/src/redis-cli CONFIG SET protected-mode no
+
+    - name: set symbolic link
+      command: ln -s /usr/bin/nodejs /usr/local/bin/node
+
+    - name: Installing forever utility
+      command: npm install -g forever
+
+    - name: Starting webserver
+      command: forever start /home/ubuntu/server/proxy_server.js
