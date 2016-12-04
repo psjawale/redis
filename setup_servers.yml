@@ -36,8 +36,8 @@
     - name: set symbolic link
       command: ln -s /usr/bin/nodejs /usr/local/bin/node
 
-    - name: Installing forever utility
-      command: npm install -g forever
+#    - name: Installing forever utility
+#      command: npm install -g forever
 
-    - name: Starting webserver
-      command: forever start /home/ubuntu/server/proxy_server.js
+#    - name: Starting webserver
+#      command: forever start /home/ubuntu/server/proxy_server.js

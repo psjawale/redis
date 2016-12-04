@@ -1,6 +1,5 @@
 var http = require('http');
 var httpProxy = require('http-proxy');
-var ab = require('../app/express-ab')
 var express = require('express')
 var cookieParser = require('cookie-parser');
 var options = {}
@@ -10,22 +9,12 @@ var redis = require('redis');
 var client = redis.createClient(6379, 'localhost', {})
 
 var request = 0;
-var myPageTest = ab.test('my-fancy-test');
+
+var original_server;
 
 app.use(cookieParser());
-var i = 1,j = 1;
+var i = 0,j = 0;
 var len;
-function parseCookies (request) {
-    var list = {},
-        rc = request.headers.cookie;
-
-    rc && rc.split(';').forEach(function( cookie ) {
-        var parts = cookie.split('=');
-        list[parts.shift().trim()] = decodeURI(parts.join('='));
-    });
-
-    return list;
-}
 
 var server = http.createServer(function(req, res) {
 	client.get("canaryAlertKey", function(err,value){
@@ -56,44 +45,55 @@ var server = http.createServer(function(req, res) {
     })
     if(cookie == undefined || len == 1){
     	client.lindex('ProductionQueue',-1,function(err,data){
+    	original_server = data;
     	proxy.web(req, res, { target: data});
+        client.set('current_server', data)
     	console.log("\nRequest routed to production server:%s",data);
     })
     }else{
     client.get(cookie,function(err, value){
     	if(value == null){
-    		console.log("value is null")
     		client.rpoplpush('ProductionQueue','ProductionQueue',function(err,data){
     			console.log(data)
     			client.set(cookie,data)
     			proxy.web(req, res, { target: data});
+                client.set('current_server', data)
     			console.log("\nRequest routed to production server: %s",data);
-    			if(data == "http://localhost:3001"){
+    			if(data == original_server){
     				i = i +1;
     				client.set('server1',i);
-    				console.log(i);
+    			//	console.log(i);
     			}else{
     				j = j + 1;
     				client.set('server2',j);
-    				console.log(j);
+    			//	console.log(j);
     			}
     		})
     	}
     	else{
-    		console.log(value)
     		proxy.web(req, res, { target: value});	
+            client.set('current_server', value)
     		console.log("\nRequest routed to production server: %s",value);
-    		if(value == "http://localhost:3001"){
+    		if(value == original_server){
     				i = i +1;
     				client.set('server1',i);
-    				console.log(i);
+    			//	console.log(i);
     		}else{
     				j = j + 1;
     				client.set('server2',j);
-    				console.log(j);
+    			//	console.log(j);
     		}
     	}
 	})
 	}
 });
 server.listen(3020);
+
+// var server = http.createServer(function(req, res) {
+
+//     client.rpoplpush('ProductionQueue','ProductionQueue',function(err,data){
+//         proxy.web(req, res, { target: data});
+//         console.log("\nRequest routed to production server: %s",data);
+//     });
+// });
+// server.listen(5000)
